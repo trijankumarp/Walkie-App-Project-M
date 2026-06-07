@@ -1,4 +1,9 @@
 // renderer.js - Cloud version with Firebase Auth + Firestore (real-time)
+// Now using modern modular SDK. See src/firebase.js for initialization.
+
+import { db, auth, serverTimestamp } from './src/firebase.js';
+
+// The firebase module runs its side effects on import (init + window attachments for transition)
 
 let currentBottomTab = 'chat';
 let currentChatId = null;
@@ -8,8 +13,7 @@ let isOffline = false;
 let isDesktopLayout = false;
 
 let currentUser = null;           // Firebase user
-let db = null;
-let auth = null;
+// db and auth are imported at the top from the modular SDK (src/firebase.js)
 
 let chats = [];
 let communities = [];
@@ -26,28 +30,15 @@ let currentTheme = { bubbleColor: '#4A4A4C', wallpaper: 'default' };
 
 const STORAGE_KEY = 'social_app_theme_v1'; // only for theme now
 
-// === FIREBASE INIT ===
+// === FIREBASE INIT (modular SDK) ===
+// Initialization happens via the top-level import from src/firebase.js
+// This function now just ensures the auth listener is attached and resolves with the instances.
 function initFirebase() {
   return new Promise((resolve) => {
-    const tryInit = () => {
-      if (typeof firebase === 'undefined' || !window.FIREBASE_CONFIG) {
-        setTimeout(tryInit, 120);
-        return;
-      }
-
-      try {
-        if (!firebase.apps.length) {
-          firebase.initializeApp(window.FIREBASE_CONFIG);
-        }
-        auth = firebase.auth();
-        db = firebase.firestore();
-
-        // Enable offline persistence
-        db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-          if (err.code !== 'failed-precondition') console.warn('Firestore persistence:', err);
-        });
-
-        // Auth state listener
+    try {
+      // The imported auth/db from src/firebase.js are already initialized.
+      // Set up the auth state listener (previously done inside the compat init).
+      if (auth && typeof auth.onAuthStateChanged === 'function') {
         auth.onAuthStateChanged(user => {
           currentUser = user;
           const overlay = document.getElementById('auth-overlay');
@@ -59,15 +50,15 @@ function initFirebase() {
             if (overlay) overlay.style.display = 'flex';
           }
         });
-
-        resolve({ auth, db });
-      } catch (e) {
-        console.error('Firebase init error', e);
-        // Allow app to continue in demo mode
-        resolve(null);
       }
-    };
-    tryInit();
+
+      // Note: persistence is enabled inside src/firebase.js
+      console.log('[Firebase] initFirebase using modular instances from src/firebase.js');
+      resolve({ auth, db });
+    } catch (e) {
+      console.error('Firebase init error', e);
+      resolve(null);
+    }
   });
 }
 
@@ -75,13 +66,13 @@ function updateUserUI(user) {
   const nameEl = document.getElementById('settings-user-name');
   const emailEl = document.getElementById('settings-user-email');
   if (nameEl) nameEl.textContent = user.displayName || 'Guest User';
-  if (emailEl) emailEl.textContent = user.email || (user.isAnonymous ? 'Anonymous (demo)' : '');
+  if (emailEl) emailEl.textContent = user.email || '';
 }
 
 // === AUTH ===
 window.signInWithGoogle = async function () {
   if (!auth) return alert('Firebase not configured yet');
-  const provider = new firebase.auth.GoogleAuthProvider();
+  const provider = new (window.GoogleAuthProvider || (await import('firebase/auth')).GoogleAuthProvider)();
   try {
     await auth.signInWithPopup(provider);
   } catch (err) {
@@ -120,26 +111,19 @@ async function loadCloudData() {
   unsubscribers.forEach(u => u && u());
   unsubscribers = [];
 
-  // Load communities (global for demo)
+  // Load communities (global)
   const comUnsub = db.collection('communities').orderBy('name').onSnapshot(snap => {
     communities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (currentBottomTab === 'communities') renderCommunitiesScreen();
   });
   unsubscribers.push(comUnsub);
 
-  // Load user's chats (simple model: chats where user is member or global demo chats)
-  // For a good first experience we also load a public demo chat
+  // Load user's chats (only chats where the signed-in user is a member)
   const chatsUnsub = db.collection('chats')
     .where('members', 'array-contains', currentUser.uid)
     .orderBy('updatedAt', 'desc')
     .onSnapshot(snap => {
       chats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      // Seed a public demo chat if none exists for this user
-      if (chats.length === 0) {
-        createDemoChatIfNeeded();
-      }
-
       if (currentBottomTab === 'chat') renderChatList();
     });
   unsubscribers.push(chatsUnsub);
@@ -163,26 +147,7 @@ async function loadCloudData() {
   } catch (e) {}
 }
 
-async function createDemoChatIfNeeded() {
-  if (!db || !currentUser) return;
-  const demoChat = {
-    name: 'Public Demo Chat',
-    type: 'group',
-    members: [currentUser.uid, 'demo-user-1', 'demo-user-2'],
-    lastMessage: 'Welcome to the cloud version!',
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  const ref = await db.collection('chats').add(demoChat);
-  // Add welcome message
-  await ref.collection('messages').add({
-    text: 'This chat is synced in real-time across devices via Firebase!',
-    from: 'system',
-    fromMe: false,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
-}
+// Demo chat creation removed - app now uses only real Firebase data from the user's chats.
 
 // === CHAT & MESSAGES ===
 function renderChatList(searchTerm = '') {
@@ -205,9 +170,6 @@ function renderChatList(searchTerm = '') {
     if (currentFilter === 'unread') {
       emptyHTML = `
         <div class="flex flex-col items-center justify-center h-64 text-center px-4">
-          <div class="w-16 h-16 bg-[#1C1C1E] rounded-full flex items-center justify-center mb-4">
-            <i class="fa-solid fa-check text-4xl text-[#00C853]"></i>
-          </div>
           <div class="text-2xl font-semibold mb-2">No unread chats</div>
           <div class="text-[#8E8E93] mb-4">You're all caught up.</div>
           <div onclick="setFilter(document.querySelector('[data-filter=all]'), 'all'); renderChatList();" class="text-[#00C853] cursor-pointer">View all chats</div>
@@ -216,28 +178,17 @@ function renderChatList(searchTerm = '') {
     } else if (currentFilter === 'favorites') {
       emptyHTML = `
         <div class="flex flex-col items-center justify-center h-64 text-center px-4">
-          <div class="mb-4">
-            <div class="w-20 h-20 mx-auto bg-[#1C1C1E] rounded-xl flex items-center justify-center relative">
-              <i class="fa-solid fa-list text-3xl text-[#00C853]"></i>
-              <i class="fa-solid fa-heart text-xl text-[#00C853] absolute -top-1 -right-1"></i>
-            </div>
-          </div>
-          <div class="text-2xl font-semibold mb-2">Add to your Favorites list</div>
-          <div class="text-[#8E8E93] mb-4">See your favorites in both Chats and Calls. Add as many people or groups as you want.</div>
+          <div class="text-2xl font-semibold mb-2">No favorites yet</div>
+          <div class="text-[#8E8E93] mb-4">Tap the heart on a chat to add it here.</div>
           <div onclick="addToFavorites()" class="text-[#00C853] cursor-pointer">Add people or groups</div>
         </div>
       `;
     } else if (currentFilter === 'groups') {
       emptyHTML = `
         <div class="flex flex-col items-center justify-center h-64 text-center px-4">
-          <div class="mb-4">
-            <div class="w-20 h-20 mx-auto bg-[#1C1C1E] rounded-xl flex items-center justify-center">
-              <i class="fa-solid fa-users text-3xl text-[#00C853]"></i>
-            </div>
-          </div>
-          <div class="text-2xl font-semibold mb-2">Create a group</div>
-          <div class="text-[#8E8E93] mb-4">Connect with friends and family anywhere, anytime.</div>
-          <div onclick="createNewChat()" class="text-[#00C853] cursor-pointer">Create a group</div>
+          <div class="text-2xl font-semibold mb-2">No groups yet</div>
+          <div class="text-[#8E8E93] mb-4">Create a group to chat with multiple people at once.</div>
+          <div onclick="createNewGroup()" class="text-[#00C853] cursor-pointer">Create a group</div>
         </div>
       `;
     } else if (currentFilter !== 'all') {
@@ -328,8 +279,9 @@ function listenToMessages(chatId) {
   container.innerHTML = '';
   container.className = `flex-1 overflow-y-auto p-3 space-y-[3px] messages-area ${getWallpaperClass()}`;
 
-  if (!db) {
-    // Demo / offline mode: just render any pre-seeded messages for this chat
+  // Always use Firebase (no local/demo fallback)
+  if (!db || !currentUser) {
+    // Show empty state; user should be signed in for real data
     renderMessages(chatId);
     return;
   }
@@ -395,32 +347,20 @@ async function sendMessage() {
 
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Demo / local mode (no db or no signed-in user)
+  // Strictly use Firebase database - no local/demo fallback
   if (!db || !currentUser) {
-    if (!messages[currentChatId]) messages[currentChatId] = [];
-    messages[currentChatId].push({ id: 'local-' + Date.now(), text, fromMe: true, time, status: 'sent' });
-
-    // Update the chat list preview
-    const chat = chats.find(c => c.id === currentChatId);
-    if (chat) {
-      chat.lastMessage = text.length > 40 ? text.slice(0, 37) + '...' : text;
-      chat.time = time;
-    }
-
-    input.value = '';
-    renderMessages(currentChatId);
-    renderChatList(document.getElementById('chat-search')?.value || '');
+    alert('Please sign in to send messages. All data is stored in Firebase.');
     return;
   }
 
-  // Real cloud path
+  // Real Firebase path only
   const chatRef = db.collection('chats').doc(currentChatId);
   const msg = {
     text,
     from: currentUser.uid,
     fromMe: true,
     time,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    timestamp: serverTimestamp(),
     status: 'sent'
   };
 
@@ -430,7 +370,7 @@ async function sendMessage() {
     // Update last message on chat
     await chatRef.update({
       lastMessage: text.length > 40 ? text.slice(0, 37) + '...' : text,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      updatedAt: serverTimestamp()
     });
 
     input.value = '';
@@ -566,11 +506,10 @@ async function saveThemeToCloud() {
 
 // The rest of the functions (createNewChat, calls, communities, settings, call modal, etc.)
 // are carried over from the previous responsive implementation with minor cloud adjustments.
-
-// For this response we keep them functional (they use local state where cloud sync is not yet wired).
+// All database operations now go exclusively through Firebase.
 
 function openCamera() {
-  // Demo: open device camera (in real PWA would use navigator.mediaDevices.getUserMedia)
+  // Open device camera (real PWA would use navigator.mediaDevices.getUserMedia)
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
@@ -592,9 +531,9 @@ function openCamera() {
         document.body.appendChild(modal);
         modal.querySelector('video').srcObject = stream;
       })
-      .catch(() => alert('Camera access denied or not available (demo mode)'));
+      .catch(() => alert('Camera access denied or not available'));
   } else {
-    alert('Camera opened (demo - no real access in this environment)');
+    alert('Camera opened (no real access in this environment)');
   }
 }
 
@@ -608,7 +547,7 @@ function createNewChat() {
     type: 'dm',
     members: [currentUser.uid],
     lastMessage: '',
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: serverTimestamp(),
     avatar: `https://i.pravatar.cc/52?img=${Math.floor(Math.random()*70)}`
   }).then(ref => {
     // open it
@@ -617,6 +556,34 @@ function createNewChat() {
       openConversation({ id: ref.id, name: name.trim() });
     }, 300);
   });
+}
+
+function createNewGroup() {
+  const name = prompt('Group name:');
+  if (!name || !db || !currentUser) return;
+
+  db.collection('chats').add({
+    name: name.trim(),
+    type: 'group',
+    members: [currentUser.uid],
+    lastMessage: '',
+    updatedAt: serverTimestamp(),
+    avatar: `https://i.pravatar.cc/52?img=${Math.floor(Math.random()*70)}`
+  }).then(ref => {
+    switchBottomTab('chat');
+    setTimeout(() => {
+      openConversation({ id: ref.id, name: name.trim() });
+    }, 300);
+  });
+}
+
+function showCreateOptions() {
+  const choice = prompt('What do you want to create?\n1. New chat (1:1)\n2. New group\nEnter 1 or 2:');
+  if (choice === '1' || choice === 'chat') {
+    createNewChat();
+  } else if (choice === '2' || choice === 'group') {
+    createNewGroup();
+  }
 }
 
 function showChatMenu() {
@@ -659,7 +626,7 @@ function showChatMenu() {
 }
 
 function selectAllChats() {
-  // Demo: highlight all chat items
+  // Highlight all chat items (temporary visual)
   document.querySelectorAll('.chat-item').forEach(item => {
     item.style.background = '#3A3A3C';
     setTimeout(() => item.style.background = '', 1200);
@@ -672,15 +639,12 @@ function markAllRead() {
 }
 
 function showArchived() {
-  // Demo: show archived count and filter (in real would load archived chats)
-  const archivedCount = 7;
-  alert(`Showing ${archivedCount} archived chats (demo)`);
-  // Could filter list or open a separate view
+  // Archived view (not yet wired to real data)
+  alert('Archived chats view coming soon.');
 }
 
 function addToFavorites() {
-  alert('Add to favorites demo - select chats to favorite');
-  // In full version, open a picker to add chats to favorites
+  alert('Favorites feature coming soon.');
 }
 
 function showNewListModal() {
@@ -742,44 +706,40 @@ function createNewList() {
 }
 
 function addPeopleToList() {
-  alert('Add people or groups to list (demo)');
+  alert('Add people or groups to list (coming soon).');
 }
 
 // Many helper functions (renderCallsScreen, startCall, etc.) are kept identical to the previous responsive build
 // to avoid breaking the excellent UI you already have.
 
 function renderCallsScreen() {
-  // Render the start a call list matching the reference image
+  // Render the start a call list.
+  // No test/demo data — only real data from Firebase when available.
   const container = document.getElementById('start-call-list');
   if (!container) return;
   container.innerHTML = '';
 
-  const demoContacts = [
-    { name: 'Abhi', avatar: 'https://i.pravatar.cc/36?img=32' },
-    { name: 'Abhinav', avatar: 'https://i.pravatar.cc/36?img=15' },
-    { name: 'Greeshma', avatar: 'https://i.pravatar.cc/36?img=28' },
-    { name: 'Naveen', avatar: 'https://i.pravatar.cc/36?img=47' },
-    { name: 'Sai Teja', avatar: 'https://i.pravatar.cc/36?img=64' },
-    { name: 'Venkat', avatar: 'https://i.pravatar.cc/36?img=40' }
-  ];
+  if (!recentCalls || recentCalls.length === 0) {
+    container.innerHTML = `
+      <div class="text-[#8E8E93] text-sm px-1 py-2">No recent calls yet. Start chatting with people to see them here for quick calls.</div>
+    `;
+    return;
+  }
 
-  demoContacts.forEach(contact => {
+  // If there is real recent call data, we could render it here in the future.
+  recentCalls.forEach(call => {
     const div = document.createElement('div');
     div.className = 'flex items-center justify-between px-1 py-3 border-b border-[#2C2C2E] last:border-b-0';
     div.innerHTML = `
       <div class="flex items-center gap-x-3">
-        <div class="w-9 h-9 rounded-full overflow-hidden ring-1 ring-[#3A3A3C] relative">
-          <img src="${contact.avatar}" class="w-full h-full object-cover">
-          <div class="absolute bottom-0 right-0 w-2.5 h-2.5 ${contact.name.includes('Abhi') || contact.name.includes('Greeshma') ? 'bg-[#00C853]' : 'bg-[#8E8E93]'} border border-black rounded-full"></div>
+        <div class="w-9 h-9 rounded-full overflow-hidden ring-1 ring-[#3A3A3C]">
+          <img src="${call.avatar || 'https://i.pravatar.cc/36'}" class="w-full h-full object-cover">
         </div>
-        <div class="font-medium text-[15px]">${contact.name}</div>
+        <div class="font-medium text-[15px]">${call.name || 'Contact'}</div>
       </div>
       <div class="flex items-center gap-x-2 text-[#8E8E93]">
-        <button onclick="startCallWithUser({name: '${contact.name}', avatar: '${contact.avatar}'}); event.stopImmediatePropagation();" class="w-9 h-9 flex items-center justify-center hover:text-white">
+        <button onclick="startCallWithUser({name: '${call.name || 'Contact'}'}); event.stopImmediatePropagation();" class="w-9 h-9 flex items-center justify-center hover:text-white">
           <i class="fa-solid fa-phone text-lg"></i>
-        </button>
-        <button onclick="startVideoCallWithUser({name: '${contact.name}', avatar: '${contact.avatar}'}); event.stopImmediatePropagation();" class="w-9 h-9 flex items-center justify-center hover:text-white">
-          <i class="fa-solid fa-video text-lg"></i>
         </button>
       </div>
     `;
@@ -836,74 +796,12 @@ function init() {
   console.log('%c[Social] Cloud version initialized. Sign in to sync across devices.', 'color:#555');
 }
 
-function loadDemoData() {
-  // Seed sample data so the beautiful reference UI is visible immediately in demo mode
-  chats = [
-    {
-      id: 'd1',
-      name: 'Sarah Chen',
-      lastMessage: 'Hey, are we still on for lunch?',
-      time: '09:41',
-      unread: 2,
-      avatar: 'https://i.pravatar.cc/52?img=28',
-      type: 'dm'
-    },
-    {
-      id: 'd2',
-      name: 'Team Sync',
-      lastMessage: 'Alex: The deck looks great 👍',
-      time: '08:12',
-      unread: 0,
-      avatar: 'https://i.pravatar.cc/52?img=15',
-      type: 'group'
-    },
-    {
-      id: 'd3',
-      name: 'Mom',
-      lastMessage: 'Call me when you land',
-      time: 'Yesterday',
-      unread: 0,
-      avatar: 'https://i.pravatar.cc/52?img=40',
-      type: 'dm',
-      favorite: true
-    },
-    {
-      id: 'd4',
-      name: 'Vikram Patel',
-      lastMessage: 'Sent the files over',
-      time: 'Yesterday',
-      unread: 1,
-      avatar: 'https://i.pravatar.cc/52?img=47',
-      type: 'dm'
-    }
-  ];
-
-  // Pre-seed messages for the first chat so the conversation pane isn't empty on auto-open
-  messages['d1'] = [
-    { id: 'm1', text: 'Good morning! How did the presentation go?', fromMe: false, time: '09:12' },
-    { id: 'm2', text: 'It went really well, thanks for asking!', fromMe: true, time: '09:18', status: 'read' },
-    { id: 'm3', text: 'Hey, are we still on for lunch?', fromMe: false, time: '09:41' }
-  ];
-}
-
-function enterDemoMode() {
-  const overlay = document.getElementById('auth-overlay');
-  if (overlay) overlay.style.display = 'none';
-  loadDemoData();
-  switchBottomTab('chat');
-  renderChatList();
-  // Auto open first chat to show the main UI (list + conversation) matching your reference screenshots
-  if (chats.length > 0) {
-    setTimeout(() => {
-      openConversation(chats[0]);
-    }, 120);
-  }
-  console.log('%c[Social] Demo mode - main UI visible matching your reference screenshots', 'color:#0a0');
-}
+// Test/demo data functions removed. App uses only real Firebase data.
+// The app uses only real data from Firebase.
 
 window.SocialApp = { logout: window.logout, resetTheme: () => { localStorage.removeItem(STORAGE_KEY); location.reload(); } };
 
-// === SAFE STUBS for missing functions (prevents runtime crashes, keeps demo / UI preview working) ===
+// === UI helper stubs (prevents crashes for features not yet fully wired to Firebase) ===
 
 function getWallpaperClass() {
   if (!currentTheme || !currentTheme.wallpaper || currentTheme.wallpaper === 'default') return '';
@@ -959,7 +857,7 @@ function renderCommunitiesScreen() {
         <div class="text-xs text-[#8E8E93]">${c.memberCount || 0} members</div>
       </div>
     `;
-    el.onclick = () => alert(`Opened community: ${c.name || 'Community'} (demo)`);
+    el.onclick = () => alert(`Opened community: ${c.name || 'Community'}`);
     container.appendChild(el);
   });
 }
@@ -979,12 +877,12 @@ window.createNewCommunity = function () {
     name: name.trim(),
     createdBy: currentUser.uid,
     memberCount: 1,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    createdAt: serverTimestamp()
   });
 };
 
 window.showMoreCallOptions = function () {
-  alert('More call options (demo): Schedule, Share link, etc.');
+  alert('More call options coming soon (Schedule, Share link, etc.).');
 };
 
 window.startCall = function (isVideo = false) {
@@ -1066,12 +964,10 @@ window.toggleOfflineModeFromSettings = function () {
   const el = document.getElementById('settings-offline-status');
   if (el) el.textContent = isOffline ? 'On' : 'Off';
   // In real app this would toggle Firestore network etc.
-  console.log('[Demo] Offline mode toggled:', isOffline);
+  console.log('[App] Offline mode toggled:', isOffline);
 };
 
 // === End stubs ===
 
-// Auto start demo mode so you see the main app UI immediately (click auth buttons if you want cloud sync)
-enterDemoMode();
-
+// App starts clean. Real Firebase data loads after sign-in via the auth listener.
 init();

@@ -17,17 +17,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Firebase SDKs (CDN compat)
-       Using compat builds so the existing renderer.js + global firebase.auth()/firestore() code works without a bundler.
-       The new project (walkie-app-project-m) config is below. -->
-  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics-compat.js"></script>
-  <script>
+  <!-- Firebase modular SDK initialization - using the exact CDN + Config snippet from your Firebase console -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
+    import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+    import { getFirestore, enableIndexedDbPersistence, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
     // Your web app's Firebase configuration
-    // Updated for the new Firebase project: walkie-app-project-m
-    const firebaseConfig = window.FIREBASE_CONFIG || {
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
       apiKey: "AIzaSyBvN_qjHmkjg9_QjqDrbMKGG-0RNoy4noA",
       authDomain: "walkie-app-project-m.firebaseapp.com",
       projectId: "walkie-app-project-m",
@@ -37,28 +37,30 @@
       measurementId: "G-6F4742R8V2"
     };
 
-    // Initialize Firebase (compat style so firebase.auth() / firebase.firestore() globals work)
-    const app = firebase.initializeApp(firebaseConfig);
-    const analytics = firebase.analytics();
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    // Enable offline persistence early (safe before any reads/writes)
-    db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+    // Enable offline persistence
+    enableIndexedDbPersistence(db, { synchronizeTabs: true }).catch(err => {
       if (err.code !== 'failed-precondition') console.warn('[Firebase] Persistence:', err);
     });
 
-    // Expose (some code prefers window.*)
+    // Expose for the rest of the app (renderer + inline onboarding)
     window.app = app;
     window.auth = auth;
     window.db = db;
     window.analytics = analytics;
+    window.GoogleAuthProvider = GoogleAuthProvider;
+    window.serverTimestamp = serverTimestamp;
 
-    console.log('[Firebase] Compat SDK initialized (CDN v12.14.0) for walkie-app-project-m');
+    console.log('[Firebase] Modular SDK initialized via CDN (exact console snippet)');
   </script>
 
   <!-- Early config loader (tries real firebase-config.js for local or .deploy for hosting).
-       Falls back to the exact object above (your pasted config). This runs early so window.FIREBASE_CONFIG is available. -->
+       Still useful as fallback for window.FIREBASE_CONFIG if needed. -->
   <script>
     (function loadFirebaseConfig() {
       const useDeploy = window.location.hostname.includes('vercel.app') ||
@@ -164,7 +166,7 @@
           <div onclick="openCamera()" class="flex items-center justify-center bg-[#2C2C2E] rounded-full px-2.5 h-9">
             <i class="fa-solid fa-camera text-[#8E8E93]"></i>
           </div>
-          <div onclick="createNewChat()" class="w-9 h-9 bg-[#00C853] text-white rounded-full flex items-center justify-center shadow">
+          <div onclick="showCreateOptions()" class="w-9 h-9 bg-[#00C853] text-white rounded-full flex items-center justify-center shadow">
             <i class="fa-solid fa-plus text-xl"></i>
           </div>
         </div>
@@ -580,8 +582,8 @@
     </div>
   </div>
 
-  <!-- Load app logic (config already attempted early in head using your pasted Firebase values) -->
-  <script src="renderer.js"></script>
+  <!-- Load app logic as ESM module (Vite will bundle + the import in renderer.js pulls in src/firebase.js) -->
+  <script type="module" src="renderer.js"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
@@ -713,8 +715,8 @@
 
     async function signInWithGoogleAndProceed() {
       try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const result = await firebase.auth().signInWithPopup(provider);
+        const provider = new window.GoogleAuthProvider();
+        const result = await window.auth.signInWithPopup(provider);
         googleUser = result.user;
 
         const name = googleUser.displayName || 'User';
@@ -749,9 +751,7 @@
       const nav = document.getElementById('bottom-nav');
       if (nav) nav.style.display = 'grid';
 
-      if (typeof enterDemoMode === 'function') {
-        enterDemoMode();
-      } else if (typeof switchBottomTab === 'function') {
+      if (typeof switchBottomTab === 'function') {
         switchBottomTab('chat');
       }
     }
