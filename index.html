@@ -22,7 +22,7 @@
     // Import the functions you need from the SDKs you need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
-    import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
     import { getFirestore, enableIndexedDbPersistence, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
     // Your web app's Firebase configuration
@@ -55,6 +55,7 @@
     window.analytics = analytics;
     window.GoogleAuthProvider = GoogleAuthProvider;
     window.serverTimestamp = serverTimestamp;
+    window.signInWithPopup = signInWithPopup;  // modular function, not on auth instance
 
     console.log('[Firebase] Modular SDK initialized via CDN (exact console snippet)');
   </script>
@@ -716,7 +717,7 @@
     async function signInWithGoogleAndProceed() {
       try {
         const provider = new window.GoogleAuthProvider();
-        const result = await window.auth.signInWithPopup(provider);
+        const result = await window.signInWithPopup(window.auth, provider);
         googleUser = result.user;
 
         const name = googleUser.displayName || 'User';

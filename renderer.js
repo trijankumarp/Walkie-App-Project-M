@@ -74,7 +74,7 @@ window.signInWithGoogle = async function () {
   if (!auth) return alert('Firebase not configured yet');
   const provider = new (window.GoogleAuthProvider || (await import('firebase/auth')).GoogleAuthProvider)();
   try {
-    await auth.signInWithPopup(provider);
+    await window.signInWithPopup(auth, provider);
   } catch (err) {
     console.error(err);
     alert('Google sign-in failed: ' + (err.code || err.message || err));
