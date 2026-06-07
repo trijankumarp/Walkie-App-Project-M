@@ -644,7 +644,22 @@ function showArchived() {
 }
 
 function addToFavorites() {
-  alert('Favorites feature coming soon.');
+  if (!chats || chats.length === 0) {
+    alert('Create some chats first, then you can add them to favorites.');
+    return;
+  }
+  const list = chats.map((c, i) => `${i + 1}. ${c.name} ${c.favorite ? '(favorited)' : ''}`).join('\n');
+  const choice = prompt('Enter number to toggle favorite:\n' + list);
+  if (!choice) return;
+  const idx = parseInt(choice) - 1;
+  const chat = chats[idx];
+  if (!chat) return;
+  chat.favorite = !chat.favorite;
+  // Try to persist to Firestore
+  if (db && chat.id && !chat.id.startsWith('local-')) {
+    db.collection('chats').doc(chat.id).update({ favorite: chat.favorite }).catch(() => {});
+  }
+  renderChatList();
 }
 
 function showNewListModal() {
@@ -713,33 +728,35 @@ function addPeopleToList() {
 // to avoid breaking the excellent UI you already have.
 
 function renderCallsScreen() {
-  // Render the start a call list.
-  // No test/demo data — only real data from Firebase when available.
+  // Show the user's real chats (from Firebase) so they can start calls.
+  // No demo data.
   const container = document.getElementById('start-call-list');
   if (!container) return;
   container.innerHTML = '';
 
-  if (!recentCalls || recentCalls.length === 0) {
+  if (!chats || chats.length === 0) {
     container.innerHTML = `
-      <div class="text-[#8E8E93] text-sm px-1 py-2">No recent calls yet. Start chatting with people to see them here for quick calls.</div>
+      <div class="text-[#8E8E93] text-sm px-1 py-2">No chats yet. Create a chat first to call people.</div>
     `;
     return;
   }
 
-  // If there is real recent call data, we could render it here in the future.
-  recentCalls.forEach(call => {
+  chats.forEach(chat => {
     const div = document.createElement('div');
     div.className = 'flex items-center justify-between px-1 py-3 border-b border-[#2C2C2E] last:border-b-0';
     div.innerHTML = `
       <div class="flex items-center gap-x-3">
         <div class="w-9 h-9 rounded-full overflow-hidden ring-1 ring-[#3A3A3C]">
-          <img src="${call.avatar || 'https://i.pravatar.cc/36'}" class="w-full h-full object-cover">
+          <img src="${chat.avatar || 'https://i.pravatar.cc/36'}" class="w-full h-full object-cover">
         </div>
-        <div class="font-medium text-[15px]">${call.name || 'Contact'}</div>
+        <div class="font-medium text-[15px]">${chat.name}</div>
       </div>
       <div class="flex items-center gap-x-2 text-[#8E8E93]">
-        <button onclick="startCallWithUser({name: '${call.name || 'Contact'}'}); event.stopImmediatePropagation();" class="w-9 h-9 flex items-center justify-center hover:text-white">
+        <button onclick="startCallWithUser({name: '${chat.name}', avatar: '${chat.avatar || ''}'}); event.stopImmediatePropagation();" class="w-9 h-9 flex items-center justify-center hover:text-white">
           <i class="fa-solid fa-phone text-lg"></i>
+        </button>
+        <button onclick="startVideoCallWithUser({name: '${chat.name}', avatar: '${chat.avatar || ''}'}); event.stopImmediatePropagation();" class="w-9 h-9 flex items-center justify-center hover:text-white">
+          <i class="fa-solid fa-video text-lg"></i>
         </button>
       </div>
     `;
@@ -801,7 +818,7 @@ function init() {
 
 window.SocialApp = { logout: window.logout, resetTheme: () => { localStorage.removeItem(STORAGE_KEY); location.reload(); } };
 
-// === UI helper stubs (prevents crashes for features not yet fully wired to Firebase) ===
+// === UI helpers (core wired to real Firebase data) ===
 
 function getWallpaperClass() {
   if (!currentTheme || !currentTheme.wallpaper || currentTheme.wallpaper === 'default') return '';
@@ -857,18 +874,17 @@ function renderCommunitiesScreen() {
         <div class="text-xs text-[#8E8E93]">${c.memberCount || 0} members</div>
       </div>
     `;
-    el.onclick = () => alert(`Opened community: ${c.name || 'Community'}`);
+    el.onclick = () => {
+      // For now just show info; full community chat can be added later
+      alert(`Community: ${c.name || 'Community'}\n(Real data from Firebase)`);
+    };
     container.appendChild(el);
   });
 }
 
 window.createNewCommunity = function () {
   if (!db || !currentUser) {
-    const name = prompt('Community name:');
-    if (name) {
-      communities.push({ id: 'c' + Date.now(), name: name.trim(), memberCount: 1 });
-      if (currentBottomTab === 'communities') renderCommunitiesScreen();
-    }
+    alert('Please sign in to create communities.');
     return;
   }
   const name = prompt('Community name:');
@@ -878,6 +894,8 @@ window.createNewCommunity = function () {
     createdBy: currentUser.uid,
     memberCount: 1,
     createdAt: serverTimestamp()
+  }).then(() => {
+    // Snapshot listener will update the list automatically
   });
 };
 
