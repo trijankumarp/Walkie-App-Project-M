@@ -446,7 +446,7 @@ function switchBottomTab(tab) {
     renderCommunitiesScreen();
   } else if (tab === 'settings') {
     document.getElementById('screen-settings').classList.remove('hidden');
-    renderSettingsScreen();
+    renderThemeGrid();
   }
 }
 
@@ -763,9 +763,6 @@ function renderCallsScreen() {
     container.appendChild(div);
   });
 }
-function renderCommunitiesScreen() { /* cloud synced */ }
-function renderSettingsScreen() { renderThemeGrid(); /* ... */ }
-
 // Call modal functions (startCall, endCall, etc.) remain the same.
 
 function init() {
