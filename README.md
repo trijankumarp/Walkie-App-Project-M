@@ -188,15 +188,15 @@ What happens:
 1. Script does `git add + commit + push`
 2. GitHub receives the push
 3. If you connected the repo to Vercel → Vercel automatically deploys the new version
-4. (Optional) If you have the Firebase Hosting workflow enabled, it can also deploy to Firebase Hosting
+4. Vercel automatically deploys on every push to main (no extra workflow needed)
 
-`firebase-config.deploy.js` is committed so production builds (Vercel or Firebase Hosting) always get the correct Firebase config.
+`firebase-config.deploy.js` is committed so production builds get the correct Firebase config.
 
 ### Zero-Command Auto Push (Recommended for active development)
 
 You said you don't want to run a command **every time** you make changes.
 
-**Solution:** Start the watcher **once** in a separate terminal. After that, every edit you make will be **automatically** committed + pushed to GitHub → which automatically deploys to Firebase.
+**Solution:** Start the watcher **once** in a separate terminal. After that, every edit you make will be **automatically** committed + pushed to GitHub → which automatically deploys via Vercel.
 
 #### How to start auto mode (do this once):
 
@@ -217,7 +217,7 @@ That's it.
 
 - The watcher checks for changes every ~4 seconds.
 - When it sees any changes (that are not gitignored), it does `git add + commit + push` automatically.
-- Your GitHub Action then deploys it to Firebase Hosting.
+- Vercel then deploys it automatically.
 - You can keep editing — no more manual push commands needed.
 
 To stop: just press `Ctrl + C` in the watcher window.
@@ -284,8 +284,7 @@ After successful real (or test) verification you will see the main app UI with C
 ```
 Walkie-App-Project-M/
 ├── .github/workflows/
-│   ├── deploy-check.yml          # Validation on push/PR
-│   └── deploy-hosting.yml        # Auto-deploy to Firebase on push to main
+│   └── deploy-check.yml          # Basic validation on push/PR
 ├── electron/                     # Desktop wrapper (optional)
 ├── firebase.json                 # Firebase Hosting (optional / backup)
 ├── vercel.json                   # Vercel configuration (recommended hosting)
