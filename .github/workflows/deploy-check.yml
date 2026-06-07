@@ -24,10 +24,10 @@ jobs:
             node -e "
               const fs = require('fs');
               const content = fs.readFileSync('firebase-config.deploy.js', 'utf8');
-              if (content.includes('AIzaSyDKk1HnKH6Z4lGAGt_AqSr3Aav6ilTNAiI')) {
-                console.log('Production Firebase config present (your pasted values)');
+              if (content.includes('AIzaSyDKk1HnKH6Z4lGAGt_AqSr3Aav6ilTNAiI') || content.includes('social-app-projectm')) {
+                console.log('Warning: firebase-config.deploy.js still contains old keys/project');
               } else {
-                console.log('Warning: firebase-config.deploy.js may need the real config');
+                console.log('Production Firebase config looks updated');
               }
             "
           fi
@@ -36,4 +36,4 @@ jobs:
         run: |
           test -f index.html && echo "index.html OK"
           test -f renderer.js && echo "renderer.js OK"
-          echo "Static web files ready for Firebase Hosting auto-deploy"
+          echo "Static web files ready (Vercel + Firebase DB)"
