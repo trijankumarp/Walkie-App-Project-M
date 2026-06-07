@@ -737,7 +737,7 @@
         console.log('[Onboarding] Google sign-in complete after number entry. Main app loaded.');
       } catch (err) {
         console.error('Google sign-in error:', err);
-        alert('Google sign-in failed. Make sure Google provider is enabled in Firebase Auth.');
+        alert('Google sign-in failed: ' + (err.code || err.message || err));
       }
     }
 
