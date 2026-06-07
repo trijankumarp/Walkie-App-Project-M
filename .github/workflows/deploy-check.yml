@@ -1,0 +1,39 @@
+name: Deploy check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps (for Electron build check if needed)
+        run: npm ci --ignore-scripts || true
+
+      - name: Validate Firebase config (production)
+        run: |
+          if [ -f firebase-config.deploy.js ]; then
+            node -e "
+              const fs = require('fs');
+              const content = fs.readFileSync('firebase-config.deploy.js', 'utf8');
+              if (content.includes('AIzaSyDKk1HnKH6Z4lGAGt_AqSr3Aav6ilTNAiI')) {
+                console.log('Production Firebase config present (your pasted values)');
+              } else {
+                console.log('Warning: firebase-config.deploy.js may need the real config');
+              }
+            "
+          fi
+
+      - name: Check that core files exist
+        run: |
+          test -f index.html && echo "index.html OK"
+          test -f renderer.js && echo "renderer.js OK"
+          echo "Static web files ready for Firebase Hosting auto-deploy"

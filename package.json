@@ -1,0 +1,56 @@
+{
+  "name": "social-app-project-m",
+  "version": "1.0.0",
+  "productName": "Social App Project-M",
+  "description": "Social App Project-M — WhatsApp-like messaging with Firebase (project: social-app-projectm), real-time chats, calls, communities and themes",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "web": "python -m http.server 8080",
+    "web:node": "npx serve . -p 8080",
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "push": "powershell -ExecutionPolicy Bypass -File ./push.ps1",
+    "ship": "powershell -ExecutionPolicy Bypass -File ./push.ps1 && firebase deploy --only hosting",
+    "auto-push": "powershell -ExecutionPolicy Bypass -File ./auto-push.ps1",
+    "watch": "powershell -ExecutionPolicy Bypass -File ./auto-push.ps1",
+    "pack": "electron-builder --win --x64",
+    "build": "electron-builder --win --x64"
+  },
+  "keywords": [
+    "electron",
+    "chat",
+    "messaging",
+    "whatsapp",
+    "calls",
+    "offline"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.0"
+  },
+  "build": {
+    "appId": "com.mos.socialapp",
+    "productName": "Social App",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "index.html",
+      "renderer.js",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "Social-App-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

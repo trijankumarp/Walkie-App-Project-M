@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Social App Project-M">
+  <title>Social App Project-M</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <!-- TODO: Replace with real icon files when available -->
+  <link rel="apple-touch-icon" sizes="192x192" href="https://via.placeholder.com/192x192/111113/00A884?text=SA">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase SDKs (CDN compat - matches your console "CDN" + "Config" paste exactly.
+       Using compat builds so existing renderer.js + onboarding phone auth code (signInWithPhoneNumber etc) work without changes.
+       For pure modular (npm style) a full refactor of data layer would be needed. -->
+  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics-compat.js"></script>
+  <script>
+    // Your web app's Firebase configuration
+    // Exact match to the "Config" object you pasted (from Firebase Console)
+    const firebaseConfig = window.FIREBASE_CONFIG || {
+      apiKey: "AIzaSyDKk1HnKH6Z4lGAGt_AqSr3Aav6ilTNAiI",
+      authDomain: "social-app-projectm.firebaseapp.com",
+      projectId: "social-app-projectm",
+      storageBucket: "social-app-projectm.firebasestorage.app",
+      messagingSenderId: "575974156131",
+      appId: "1:575974156131:web:8743fc9aa90949b9411556",
+      measurementId: "G-D1YRVGQ9Y4"
+    };
+
+    // Initialize Firebase (compat style so firebase.auth() / firebase.firestore() globals work)
+    const app = firebase.initializeApp(firebaseConfig);
+    const analytics = firebase.analytics();
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Enable offline persistence early (safe before any reads/writes)
+    db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+      if (err.code !== 'failed-precondition') console.warn('[Firebase] Persistence:', err);
+    });
+
+    // Expose (some code prefers window.*)
+    window.app = app;
+    window.auth = auth;
+    window.db = db;
+    window.analytics = analytics;
+
+    console.log('[Firebase] Compat SDK initialized (CDN v12.14.0) using your exact config');
+  </script>
+
+  <!-- Early config loader (tries real firebase-config.js for local or .deploy for hosting).
+       Falls back to the exact object above (your pasted config). This runs early so window.FIREBASE_CONFIG is available. -->
+  <script>
+    (function loadFirebaseConfig() {
+      const useDeploy = window.location.hostname.includes('vercel.app') ||
+                        window.location.hostname.includes('firebaseapp.com') ||
+                        window.location.hostname.includes('.web.app');
+      const script = document.createElement('script');
+      script.src = useDeploy ? 'firebase-config.deploy.js' : 'firebase-config.js';
+      script.onerror = () => {
+        console.warn('[Firebase] No firebase-config.js — using built-in example values (your pasted config). Copy firebase-config.example.js → firebase-config.js to customize.');
+        const fallback = document.createElement('script');
+        fallback.src = 'firebase-config.example.js';
+        document.head.appendChild(fallback);
+      };
+      document.head.appendChild(script);
+    })();
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Roboto+Mono&amp;display=swap');
+    
+    :root {
+      --wa-black: #000000;
+      --wa-dark-gray: #1C1C1E;
+      --wa-medium-gray: #2C2C2E;
+      --wa-light-gray: #8E8E93;
+      --wa-white: #FFFFFF;
+      --accent: #FFFFFF;
+      --bubble-sent: #4A4A4C;
+      --bubble-received: #2C2C2E;
+      --bubble-received: #2C2C2E;
+      --chat-bg: var(--wa-black);
+    }
+    
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    
+    .wa-bottom-nav { background: #1C1C1E; border-top: 1px solid #2C2C2E; }
+    .wa-tab { color: #8E8E93; transition: all 0.1s ease; }
+    .wa-tab.active { color: #FFFFFF; }
+    .wa-tab.active .tab-label { font-weight: 600; }
+    
+    .message-bubble {
+      max-width: 78%; padding: 9px 13px; border-radius: 16px; font-size: 15px; line-height: 1.35;
+    }
+    .message-sent { background-color: var(--bubble-sent); color: white; border-bottom-right-radius: 4px; }
+    .message-received { background-color: var(--bubble-received); color: #f3f4f6; border-bottom-left-radius: 4px; }
+    
+    .chat-item { transition: background-color 0.1s; }
+    .chat-item:hover { background-color: var(--wa-medium-gray); }
+    .chat-item.active { background-color: #3A3A3C; }
+    
+    .filter-pill {
+      background: #2C2C2E; color: #D1D1D6; padding: 5px 13px; border-radius: 9999px;
+      font-size: 12.5px; white-space: nowrap; transition: all 0.1s;
+    }
+    .filter-pill.active { background: #00C853; color: white; font-weight: 500; }
+    
+    .messages-area { background-color: var(--chat-bg); }
+    
+    .theme-card {
+      border-radius: 14px; overflow: hidden; border: 2px solid transparent;
+      cursor: pointer; transition: transform 0.1s, border-color 0.1s;
+    }
+    .theme-card.selected { border-color: white; }
+    .theme-card:hover { transform: scale(1.015); }
+    
+    .master-detail { display: flex; }
+    .list-pane { width: 100%; }
+    .detail-pane { display: none; }
+    
+    @media (min-width: 620px) {
+      .master-detail { flex-direction: row; }
+      .list-pane { width: 300px; min-width: 260px; max-width: 320px; border-right: 1px solid #2C2C2E; flex-shrink: 0; }
+      .detail-pane { display: flex; flex: 1; min-width: 0; }
+      .mobile-only { display: none !important; }
+    }
+    
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    .auth-overlay {
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body class="bg-black text-white h-screen flex flex-col overflow-hidden select-none">
+
+
+
+  <!-- Main Content (hidden until onboarding complete) -->
+  <div id="main-content" class="flex-1 overflow-hidden flex flex-col bg-[var(--wa-black)]" style="display: none;">
+
+    <!-- CHAT SCREEN -->
+    <div id="screen-chat" class="flex-1 flex flex-col overflow-hidden">
+      <div id="chat-top-actions" class="px-3 pt-0 pb-1 flex items-center justify-between bg-[var(--wa-dark-gray)]">
+        <div class="flex items-center gap-x-3">
+          <div onclick="showChatMenu()" class="w-9 h-9 flex items-center justify-center text-[#8E8E93] bg-[#2C2C2E] rounded-full">
+            <i class="fa-solid fa-ellipsis-h text-lg"></i>
+          </div>
+          <div class="text-[28px] font-semibold tracking-[-0.5px]">Chats</div>
+        </div>
+        <div class="flex items-center gap-x-2">
+          <div onclick="openCamera()" class="flex items-center justify-center bg-[#2C2C2E] rounded-full px-2.5 h-9">
+            <i class="fa-solid fa-camera text-[#8E8E93]"></i>
+          </div>
+          <div onclick="createNewChat()" class="w-9 h-9 bg-[#00C853] text-white rounded-full flex items-center justify-center shadow">
+            <i class="fa-solid fa-plus text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <div id="chat-master-detail" class="flex-1 flex overflow-hidden master-detail">
+        <!-- LIST PANE -->
+        <div id="list-pane" class="list-pane flex flex-col bg-[var(--wa-black)] overflow-hidden">
+          <div class="p-1 bg-[var(--wa-dark-gray)]">
+            <div class="flex items-center bg-[var(--wa-medium-gray)] rounded-[20px] px-3.5 h-9">
+              <i class="fa-solid fa-search text-[#8E8E93] mr-2.5 text-sm"></i>
+              <input id="chat-search" type="text" placeholder="Ask Meta AI or Search"
+                     oninput="filterChatList()"
+                     class="flex-1 bg-transparent text-[14.5px] placeholder-[#8E8E93] outline-none">
+            </div>
+          </div>
+
+          <div id="filter-row" class="px-3 py-2 bg-[var(--wa-dark-gray)] flex gap-1.5 overflow-x-auto no-scrollbar border-b border-[var(--wa-medium-gray)]">
+            <div onclick="setFilter(this, 'all')" class="filter-pill active cursor-pointer" data-filter="all">All</div>
+            <div onclick="setFilter(this, 'unread')" class="filter-pill cursor-pointer" data-filter="unread">Unread</div>
+            <div onclick="setFilter(this, 'favorites')" class="filter-pill cursor-pointer" data-filter="favorites">Favorites</div>
+            <div onclick="setFilter(this, 'groups')" class="filter-pill cursor-pointer" data-filter="groups">Groups</div>
+            <div onclick="showNewListModal()" class="filter-pill cursor-pointer flex items-center gap-x-1 px-2.5">
+              <i class="fa-solid fa-plus text-[10px]"></i>
+            </div>
+          </div>
+
+          <div onclick="showArchived()" class="px-3 py-2.5 bg-[var(--wa-dark-gray)] flex items-center text-[#8E8E93] text-sm border-b border-[var(--wa-medium-gray)] cursor-pointer">
+            <i class="fa-solid fa-archive mr-2"></i>
+            <span>Archived</span>
+          </div>
+
+          <div id="chat-list" class="flex-1 overflow-y-auto chat-list-scroll bg-black"></div>
+        </div>
+
+        <!-- DETAIL PANE -->
+        <div id="detail-pane" class="detail-pane flex-1 flex flex-col min-w-0 bg-[var(--wa-black)]">
+          <div id="conv-header" class="h-11 bg-[var(--wa-dark-gray)] px-2 flex items-center justify-between border-b border-[var(--wa-medium-gray)] shrink-0">
+            <div class="flex items-center gap-x-2 px-1">
+              <button onclick="closeConversation()" id="conv-back-btn" class="w-8 h-8 flex items-center justify-center text-white md:hidden">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+              </button>
+              <div id="conv-avatar" class="w-7 h-7 rounded-full overflow-hidden ring-1 ring-[#2C2C2E]"></div>
+              <div class="min-w-0">
+                <div id="conv-name" class="font-semibold text-[14.5px] truncate"></div>
+                <div id="conv-status" class="text-[10px] text-[var(--wa-light-gray)] -mt-px">online</div>
+              </div>
+            </div>
+            <div class="flex items-center pr-1 text-white">
+              <button onclick="startCall(false)" class="px-2 py-1"><i class="fa-solid fa-phone text-base"></i></button>
+              <button onclick="startCall(true)" class="px-2 py-1"><i class="fa-solid fa-video text-base"></i></button>
+              <button onclick="closeConversationDesktop()" id="conv-close-desktop" class="px-2 py-1 text-[#8E8E93] hidden md:block">
+                <i class="fa-solid fa-times text-base"></i>
+              </button>
+            </div>
+          </div>
+
+          <div id="messages-container" class="flex-1 overflow-y-auto p-3 space-y-[3px] messages-area"></div>
+
+          <div class="p-2.5 bg-[var(--wa-dark-gray)] border-t border-[var(--wa-medium-gray)]">
+            <div class="flex items-center bg-[#2C2C2E] rounded-[20px] px-3.5 h-10">
+              <i class="fa-regular fa-face-smile text-[#8E8E93] text-lg mr-2"></i>
+              <input id="message-input" type="text" placeholder="Message"
+                     onkeypress="if (event.key === 'Enter') sendMessage()"
+                     class="flex-1 bg-transparent outline-none text-[14.5px] placeholder-[#8E8E93]">
+              <button onclick="sendMessage()" class="ml-1 text-white">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="detail-empty" class="detail-pane flex-1 flex-col items-center justify-center text-center px-6 bg-[#111113] hidden">
+          <i class="fa-solid fa-comments text-5xl text-[#2C2C2E] mb-3"></i>
+          <div class="text-[#8E8E93] text-sm">Select a chat to start messaging</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALLS / COMMUNITIES / SETTINGS screens (same as before, abbreviated for brevity) -->
+    <!-- Calls screen matching reference -->
+    <div id="screen-calls" class="hidden flex-1 flex flex-col overflow-hidden bg-black">
+      <div class="p-4 flex-1 overflow-auto">
+        <div class="max-w-md mx-auto">
+          <!-- Title -->
+          <div class="text-[28px] font-semibold mb-6 px-1">Calls</div>
+
+          <!-- Central illustration -->
+          <div class="flex justify-center mb-6">
+            <div class="relative w-40 h-28 bg-[#1F1F1F] rounded-2xl border border-[#3A3A3C] flex items-center justify-center">
+              <!-- Laptop base -->
+              <div class="w-36 h-20 bg-[#E8F5E9] rounded-xl relative flex items-center justify-center">
+                <!-- Screen -->
+                <div class="w-28 h-16 bg-white rounded flex items-center justify-center p-1">
+                  <!-- Video grid -->
+                  <div class="grid grid-cols-2 gap-1 w-full h-full">
+                    <div class="bg-[#4CAF50] rounded flex items-center justify-center text-white text-[10px]">
+                      <i class="fa-solid fa-user text-xs"></i>
+                    </div>
+                    <div class="bg-[#4CAF50] rounded flex items-center justify-center text-white text-[10px]">
+                      <i class="fa-solid fa-user text-xs"></i>
+                    </div>
+                    <div class="bg-[#4CAF50] rounded flex items-center justify-center text-white text-[10px]">
+                      <i class="fa-solid fa-user text-xs"></i>
+                    </div>
+                    <div class="bg-[#4CAF50] rounded flex items-center justify-center text-white text-[10px]">
+                      <i class="fa-solid fa-user text-xs"></i>
+                    </div>
+                  </div>
+                </div>
+                <!-- Green sidebar -->
+                <div class="absolute -left-1 top-2 bottom-2 w-3 bg-[#00C853] rounded-l"></div>
+                <!-- X on one -->
+                <div class="absolute top-1 right-1 text-[8px] text-white bg-black/70 px-0.5 rounded">x</div>
+              </div>
+              <!-- Laptop base -->
+              <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-44 h-3 bg-[#BDBDBD] rounded-b"></div>
+            </div>
+          </div>
+
+          <div class="text-center mb-8">
+            <div class="text-xl font-semibold mb-1">Bring the group together</div>
+            <div class="text-[#8E8E93] text-sm max-w-[260px] mx-auto">
+              Join calls from a phone or computer, and use screen sharing to work as a team.
+            </div>
+          </div>
+
+          <!-- Start a call -->
+          <div class="flex items-center justify-between mb-3 px-1">
+            <div class="text-sm font-medium text-[#E0E0E0]">Start a call</div>
+            <div onclick="showMoreCallOptions()" class="text-sm px-3 py-1 bg-[#2C2C2E] rounded-full text-[#8E8E93]">More</div>
+          </div>
+
+          <div id="start-call-list" class="space-y-0"></div>
+        </div>
+      </div>
+
+      <!-- Bottom nav is global, but calls screen content matches reference -->
+    </div>
+
+    <div id="screen-communities" class="hidden flex-1 flex flex-col overflow-hidden bg-black">
+      <div class="max-w-2xl mx-auto w-full p-4">
+        <div class="text-2xl font-semibold mb-1">Communities</div>
+        <p class="text-[#8E8E93] text-sm mb-4">Groups that matter to you</p>
+        <div id="communities-list" class="space-y-2"></div>
+        <button onclick="createNewCommunity()" class="mt-5 w-full py-3 rounded-2xl border border-[#2C2C2E] text-white font-medium flex items-center justify-center gap-x-2">
+          <i class="fa-solid fa-plus"></i> <span>Create new community</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-settings" class="hidden flex-1 overflow-y-auto bg-black p-4">
+      <div class="max-w-2xl mx-auto">
+        <div class="flex items-center gap-x-4 mb-6 px-1">
+          <div class="w-14 h-14 rounded-full overflow-hidden ring-2 ring-[#2C2C2E]">
+            <img src="https://i.pravatar.cc/56?img=68" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <div class="font-semibold text-lg" id="settings-user-name">You</div>
+            <div class="text-[#8E8E93] text-sm" id="settings-user-email">Loading...</div>
+          </div>
+        </div>
+
+        <div class="mb-6 px-1">
+          <div class="font-semibold mb-3">Chat theme</div>
+          <div class="grid grid-cols-4 sm:grid-cols-5 gap-2.5 mb-4" id="theme-grid"></div>
+
+          <div onclick="pickBubbleColor()" class="flex items-center justify-between bg-[#1C1C1E] px-4 h-11 rounded-2xl mb-2 cursor-pointer">
+            <div class="flex items-center gap-x-3"><i class="fa-solid fa-comment-dots"></i><span>Chat bubble color</span></div>
+            <div class="flex items-center gap-x-2">
+              <div id="current-bubble-swatch" class="w-5 h-5 rounded-full bg-[#2C2C2E]"></div>
+              <i class="fa-solid fa-chevron-right text-[#8E8E93]"></i>
+            </div>
+          </div>
+          <div onclick="pickWallpaper()" class="flex items-center justify-between bg-[#1C1C1E] px-4 h-11 rounded-2xl cursor-pointer">
+            <div class="flex items-center gap-x-3"><i class="fa-solid fa-image"></i><span>Wallpaper</span></div>
+            <i class="fa-solid fa-chevron-right text-[#8E8E93]"></i>
+          </div>
+        </div>
+
+        <div class="bg-[#1C1C1E] rounded-2xl overflow-hidden text-sm">
+          <div class="px-4 h-11 flex items-center justify-between border-b border-[#2C2C2E]">
+            <span>Notifications</span><input type="checkbox" checked class="accent-[#8E8E93]">
+          </div>
+          <div onclick="toggleOfflineModeFromSettings()" class="px-4 h-11 flex items-center justify-between cursor-pointer">
+            <span>Offline mode</span><span id="settings-offline-status" class="text-[#8E8E93]">Off</span>
+          </div>
+          <div onclick="logout()" class="px-4 h-11 flex items-center justify-between cursor-pointer text-red-400 border-t border-[#2C2C2E]">
+            <span>Sign out</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation (hidden during onboarding) -->
+  <div id="bottom-nav" class="wa-bottom-nav h-[54px] grid grid-cols-4 text-xs shrink-0 border-t border-[#2C2C2E]" style="display: none;">
+    <div id="bottom-tab-chat" class="wa-tab flex flex-col items-center justify-center gap-y-[1px] active" data-tab="chat">
+      <i class="fa-solid fa-comments text-[19px]"></i><div class="tab-label text-[10px]">Chat</div>
+    </div>
+    <div id="bottom-tab-calls" class="wa-tab flex flex-col items-center justify-center gap-y-[1px]" data-tab="calls">
+      <i class="fa-solid fa-phone text-[19px]"></i><div class="tab-label text-[10px]">Calls</div>
+    </div>
+    <div id="bottom-tab-communities" class="wa-tab flex flex-col items-center justify-center gap-y-[1px]" data-tab="communities">
+      <i class="fa-solid fa-users text-[19px]"></i><div class="tab-label text-[10px]">Communities</div>
+    </div>
+    <div id="bottom-tab-settings" class="wa-tab flex flex-col items-center justify-center gap-y-[1px]" data-tab="settings">
+      <i class="fa-solid fa-gear text-[19px]"></i><div class="tab-label text-[10px]">Settings</div>
+    </div>
+  </div>
+
+  <!-- Onboarding flow (exact match to your reference screenshots, branded as Social App Project-M) -->
+  <div id="onboarding" class="fixed inset-0 bg-black z-[100] text-white flex flex-col" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    
+    <!-- Step 1: Welcome (Image #1) -->
+    <div id="step-1" class="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <div class="mb-8">
+        <!-- Exact reference-style illustration using only black/gray/white (hover effects on elements) -->
+        <svg width="192" height="160" viewBox="0 0 192 160" class="mx-auto transition-transform hover:scale-105" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+          <!-- White paper/envelope base (left tilted) -->
+          <path d="M20 40 L20 120 Q20 140 40 140 L100 140 Q120 140 120 120 L120 40 Z" fill="#FFFFFF" stroke="#2C2C2E" stroke-width="4"/>
+          <!-- Green-ish but gray phone (left) -->
+          <rect x="10" y="50" width="35" height="70" rx="8" fill="#8E8E93" stroke="#1C1C1E" stroke-width="3"/>
+          <circle cx="27" cy="60" r="5" fill="#1C1C1E"/>
+          <rect x="15" y="105" width="25" height="8" rx="2" fill="#1C1C1E"/>
+          <!-- Globe (right) -->
+          <circle cx="140" cy="55" r="35" fill="#2C2C2E" stroke="#8E8E93" stroke-width="3"/>
+          <!-- Globe grid lines (white/gray) -->
+          <ellipse cx="140" cy="55" rx="35" ry="12" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.7"/>
+          <ellipse cx="140" cy="55" rx="35" ry="25" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.5"/>
+          <line x1="105" y1="55" x2="175" y2="55" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6"/>
+          <line x1="140" y1="20" x2="140" y2="90" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6"/>
+          <!-- Chat bubble (front, light gray) -->
+          <path d="M70 85 Q70 115 100 115 L140 115 Q155 115 155 100 L155 85 Z" fill="#FFFFFF" stroke="#2C2C2E" stroke-width="3"/>
+          <!-- Chat lines (dark gray) -->
+          <line x1="85" y1="95" x2="130" y2="95" stroke="#1C1C1E" stroke-width="2" stroke-linecap="round"/>
+          <line x1="85" y1="103" x2="115" y2="103" stroke="#1C1C1E" stroke-width="2" stroke-linecap="round"/>
+          <!-- Heart (teal-ish but gray) -->
+          <path d="M78 78 Q78 70 85 70 Q90 70 90 75 Q90 70 95 70 Q102 70 102 78 Q102 88 90 95 Q78 88 78 78" fill="#8E8E93" stroke="#1C1C1E" stroke-width="2"/>
+          <!-- Lock (bottom right, dark gray) -->
+          <rect x="135" y="105" width="25" height="22" rx="3" fill="#1C1C1E" stroke="#8E8E93" stroke-width="2"/>
+          <path d="M140 105 Q140 95 147 95 Q155 95 155 105" fill="none" stroke="#8E8E93" stroke-width="3"/>
+          <circle cx="147" cy="115" r="3" fill="#8E8E93"/>
+          <!-- Hover interaction: the whole icon scales slightly on hover (applied to svg) -->
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold mb-6">Welcome to Social App Project-M</h1>
+      <p class="text-[var(--wa-light-gray)] text-sm mb-8 max-w-xs">
+        Read our <span class="text-[var(--wa-white)]">Privacy Policies</span>. Tap "Agree and continue" to accept our <span class="text-[var(--wa-white)]">Terms of Service</span>.
+      </p>
+      <button onclick="goToStep(2)" 
+              class="w-full max-w-xs bg-[#00C853] hover:bg-[#00A844] transition text-white font-semibold py-3.5 rounded-full text-lg">
+        Agree and continue
+      </button>
+    </div>
+
+    <!-- Step 2: Enter phone number (Image #2) - personal number for display, no verification -->
+    <div id="step-2" class="hidden flex-1 flex flex-col">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <button onclick="goToStep(1)" class="w-9 h-9 flex items-center justify-center text-gray-400">
+          <i class="fa-solid fa-arrow-left text-xl"></i>
+        </button>
+        <div class="w-9"></div>
+      </div>
+      
+      <div class="px-6 pt-4">
+        <h2 class="text-2xl font-semibold mb-2">Enter your phone number</h2>
+        <p class="text-gray-400 text-sm mb-8">Enter your personal number for display in the app. We will verify your account with Google sign-in.</p>
+        
+        <div onclick="goToStep(3)" class="bg-[var(--wa-dark-gray)] rounded-xl p-4 mb-4 flex justify-between items-center cursor-pointer">
+          <div>
+            <div id="selected-country-name" class="text-white text-sm">India</div>
+            <div id="selected-country-code" class="text-[var(--wa-light-gray)]">+91</div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-[var(--wa-light-gray)]"></i>
+        </div>
+        
+        <div class="bg-[var(--wa-medium-gray)] rounded-xl p-4 flex items-center">
+          <div id="phone-prefix" class="text-[var(--wa-white)] mr-3">+91</div>
+          <input id="phone-input" type="tel" placeholder="Phone number" 
+                 class="flex-1 bg-transparent outline-none text-white text-lg" value="">
+        </div>
+      </div>
+      
+      <div class="mt-auto p-6">
+        <button onclick="proceedToConfirm()" 
+                class="w-full bg-[#00C853] hover:bg-[#00A844] transition text-white font-semibold py-3.5 rounded-full text-lg">
+          Next
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Country picker (Image #3) -->
+    <div id="step-3" class="hidden flex-1 flex flex-col">
+      <div class="flex items-center px-4 pt-4 pb-2">
+        <button onclick="goToStep(2)" class="w-9 h-9 flex items-center justify-center text-gray-400">
+          <i class="fa-solid fa-arrow-left text-xl"></i>
+        </button>
+        <h2 class="flex-1 text-center text-xl font-semibold">Your country</h2>
+        <div class="w-9"></div>
+      </div>
+      
+      <div class="px-4 pb-2">
+        <div class="bg-[var(--wa-medium-gray)] rounded-full px-4 flex items-center">
+          <i class="fa-solid fa-search text-gray-400 mr-3"></i>
+          <input id="country-search" type="text" placeholder="Search" oninput="filterCountries()"
+                 class="flex-1 bg-transparent py-3 outline-none text-white">
+        </div>
+      </div>
+      
+      <div id="country-list" class="flex-1 overflow-y-auto px-2">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Step 4: Confirm number (Image #4) -->
+    <div id="step-4" class="hidden flex-1 flex flex-col">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <button onclick="goToStep(2)" class="w-9 h-9 flex items-center justify-center text-gray-400">
+          <i class="fa-solid fa-arrow-left text-xl"></i>
+        </button>
+        <div class="w-9"></div>
+      </div>
+      
+      <div class="px-6 pt-8">
+        <h2 class="text-2xl font-semibold mb-2">Enter your phone number</h2>
+        <p class="text-gray-400 text-sm mb-6">Enter your personal number for display in the app. We will verify your account with Google sign-in.</p>
+        
+        <div class="bg-[var(--wa-dark-gray)] rounded-2xl p-4 mb-6">
+          <div class="flex justify-between mb-2">
+            <div class="text-[var(--wa-white)]" id="confirm-country">India</div>
+            <div class="text-[var(--wa-light-gray)]">›</div>
+          </div>
+          <div class="text-2xl text-white" id="confirm-number">+91 1234 567 890</div>
+        </div>
+      </div>
+      
+      <div class="mt-auto p-6">
+        <div class="text-center mb-4 text-sm text-[var(--wa-light-gray)]">
+          Is this the correct number?
+        </div>
+        <div id="confirm-error" class="text-red-500 text-sm text-center mb-2 hidden"></div>
+        <div class="flex gap-3">
+          <button onclick="goToStep(2)" 
+                  class="flex-1 bg-[var(--wa-dark-gray)] hover:bg-[var(--wa-medium-gray)] py-3 rounded-2xl font-medium">Edit</button>
+          <button id="confirm-btn" onclick="confirmNumberAndGoogle()" 
+                  class="flex-1 bg-[#00C853] hover:bg-[#00A844] text-white py-3 rounded-2xl font-semibold">Yes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 removed - no phone verification, Google sign-in after confirm -->
+    
+  </div>
+
+  <!-- New List Modal -->
+  <div id="new-list-modal" class="hidden fixed inset-0 bg-black/80 z-[300] flex items-center justify-center p-4">
+    <div class="bg-[#1C1C1E] w-full max-w-sm rounded-3xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-[#2C2C2E]">
+        <button onclick="hideNewListModal()" class="text-[#8E8E93]">Cancel</button>
+        <div class="font-semibold">New list</div>
+        <button onclick="createNewList()" class="text-[#00C853]">Done</button>
+      </div>
+      <div class="p-4">
+        <div class="flex items-center bg-[#2C2C2E] rounded-xl px-4 py-2 mb-2">
+          <input id="list-name-input" type="text" placeholder="Examples: Qualified lead, order" class="flex-1 bg-transparent outline-none text-white text-sm">
+          <div id="list-color-dot" class="w-4 h-4 rounded-full bg-[#00C853]"></div>
+        </div>
+        <div class="text-xs text-[#8E8E93] mb-3">Any list you create becomes a filter at the top of your Chats tab.</div>
+        <div class="text-sm font-semibold mb-2">Suggestions</div>
+        <div id="list-suggestions" class="space-y-1 mb-4">
+          <!-- populated by JS -->
+        </div>
+        <div class="text-sm font-semibold mb-2">Included</div>
+        <div id="list-included" class="mb-2">
+          <div onclick="addPeopleToList()" class="flex items-center gap-x-2 px-4 py-2 bg-[#2C2C2E] rounded-xl cursor-pointer">
+            <div class="w-6 h-6 rounded-full bg-[#3A3A3C] flex items-center justify-center">
+              <i class="fa-solid fa-plus text-xs"></i>
+            </div>
+            <span class="text-sm">Add people or groups</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call Modal -->
+  <div id="call-modal" onclick="if (event.target.id === 'call-modal') endCall()" 
+       class="hidden fixed inset-0 bg-black/80 z-[70] items-center justify-center">
+    <div onclick="event.stopImmediatePropagation()" class="w-[88%] max-w-[300px] bg-[#1C1C1E] border border-[#2C2C2E] rounded-3xl overflow-hidden">
+      <div class="pt-7 pb-3 text-center">
+        <div id="call-avatar" class="w-16 h-16 mx-auto rounded-full overflow-hidden ring-4 ring-[#2C2C2E] mb-2.5"></div>
+        <div id="call-name" class="font-semibold text-lg"></div>
+        <div id="call-status" class="text-xs text-[#8E8E93] mt-0.5">Connecting...</div>
+      </div>
+      <div class="text-center">
+        <div id="call-timer" class="font-mono text-3xl tracking-[3.5px] text-white">00:00</div>
+      </div>
+      <div class="flex justify-center gap-x-6 py-5 bg-[#111113]">
+        <button onclick="toggleMute()" id="mute-btn" class="flex flex-col items-center text-xs text-[#8E8E93]">
+          <div class="w-10 h-10 bg-[#2C2C2E] rounded-full flex items-center justify-center mb-1"><i class="fa-solid fa-microphone"></i></div>
+          Mute
+        </button>
+        <button onclick="toggleVideo()" id="video-btn" class="flex flex-col items-center text-xs text-[#8E8E93]">
+          <div class="w-10 h-10 bg-[#2C2C2E] rounded-full flex items-center justify-center mb-1"><i class="fa-solid fa-video"></i></div>
+          Video
+        </button>
+        <button onclick="endCall()" class="flex flex-col items-center text-xs text-red-400">
+          <div class="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center mb-1"><i class="fa-solid fa-phone-slash text-white"></i></div>
+          End
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load app logic (config already attempted early in head using your pasted Firebase values) -->
+  <script src="renderer.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => {
+            console.log('[PWA] Service Worker registered:', reg.scope);
+          })
+          .catch((err) => {
+            console.error('[PWA] Service Worker registration failed:', err);
+          });
+      });
+    }
+  </script>
+
+  <!-- Hidden reCAPTCHA for Firebase Phone Auth (required for web/PWA SMS verification) -->
+  <div id="recaptcha-container" style="display: none;"></div>
+
+  <!-- Onboarding JS Logic - first 4 steps for personal number entry (no verification), then Google sign-in -->
+  <script>
+    // Country data for picker (matches the reference)
+    const countries = [
+      { name: 'United States', code: '+1' },
+      { name: 'India', code: '+91' },
+      { name: 'Brazil', code: '+55' },
+      { name: 'Germany', code: '+49' },
+      { name: 'Italy', code: '+39' },
+      { name: 'Russia', code: '+7' },
+      { name: 'United Kingdom', code: '+44' },
+      { name: 'Afghanistan', code: '+93' },
+      { name: 'Åland Islands', code: '+358' },
+      { name: 'Albania', code: '+355' },
+      { name: 'Algeria', code: '+213' },
+      { name: 'American Samoa', code: '+1' },
+      { name: 'Andorra', code: '+376' },
+      { name: 'Angola', code: '+244' },
+      { name: 'Anguilla', code: '+1' },
+      // Add more as needed
+    ];
+
+    let currentOnboardingStep = 1;
+    let selectedCountry = { name: 'India', code: '+91' };
+    let fullPhoneNumber = '';
+    let googleUser = null;
+
+    function goToStep(step) {
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById('step-' + i);
+        if (el) el.classList.add('hidden');
+      }
+      const target = document.getElementById('step-' + step);
+      if (target) target.classList.remove('hidden');
+      currentOnboardingStep = step;
+
+      if (step === 3) {
+        renderCountryList();
+      }
+      if (step === 2) {
+        updateCountryDisplays();
+      }
+      if (step === 4) {
+        if (typeof setSendButtonLoading === 'function') setSendButtonLoading(false);
+      }
+    }
+
+    function updateCountryDisplays() {
+      const nameEl = document.getElementById('selected-country-name');
+      const codeEl = document.getElementById('selected-country-code');
+      const prefixEl = document.getElementById('phone-prefix');
+      if (nameEl) nameEl.textContent = selectedCountry.name;
+      if (codeEl) codeEl.textContent = selectedCountry.code;
+      if (prefixEl) prefixEl.textContent = selectedCountry.code;
+    }
+
+    function renderCountryList(filter = '') {
+      const container = document.getElementById('country-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const filtered = countries.filter(c => 
+        c.name.toLowerCase().includes(filter.toLowerCase()) || 
+        c.code.includes(filter)
+      );
+
+      filtered.forEach(country => {
+        const div = document.createElement('div');
+        div.className = `px-4 py-3 flex justify-between items-center border-b border-[var(--wa-medium-gray)] cursor-pointer hover:bg-[var(--wa-dark-gray)] ${selectedCountry.name === country.name ? 'bg-[var(--wa-dark-gray)]' : ''}`;
+        div.innerHTML = `
+          <span>${country.name}</span>
+          <span class="text-[var(--wa-light-gray)]">${country.code} ${selectedCountry.name === country.name ? '<span class="text-[var(--wa-white)]">✓</span>' : ''}</span>
+        `;
+        div.onclick = () => {
+          selectedCountry = country;
+          const input = document.getElementById('phone-input');
+          if (input) {
+            let val = input.value.trim();
+            val = val.replace(/^\+\d+\s*/, '');
+            input.value = val;
+          }
+          updateCountryDisplays();
+          goToStep(2);
+        };
+        container.appendChild(div);
+      });
+    }
+
+    function filterCountries() {
+      const search = document.getElementById('country-search').value;
+      renderCountryList(search);
+    }
+
+    function proceedToConfirm() {
+      const phoneInput = document.getElementById('phone-input').value.trim();
+      if (!phoneInput) {
+        alert('Please enter phone number');
+        return;
+      }
+      fullPhoneNumber = selectedCountry.code + ' ' + phoneInput;
+      document.getElementById('confirm-country').textContent = selectedCountry.name;
+      document.getElementById('confirm-number').textContent = fullPhoneNumber;
+      goToStep(4);
+    }
+
+    function confirmNumberAndGoogle() {
+      // After confirming personal number, do Google sign-in (no OTP verification)
+      signInWithGoogleAndProceed();
+    }
+
+    async function signInWithGoogleAndProceed() {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await firebase.auth().signInWithPopup(provider);
+        googleUser = result.user;
+
+        const name = googleUser.displayName || 'User';
+        const phone = fullPhoneNumber || '';
+
+        window.profileData = { name, phone, googleUser };
+
+        if (typeof updateUserUI === 'function' && googleUser) {
+          try { updateUserUI(googleUser); } catch(e){}
+        }
+
+        completeOnboarding();
+
+        try {
+          localStorage.setItem('social_profile', JSON.stringify({ name, phone }));
+        } catch(e){}
+
+        console.log('[Onboarding] Google sign-in complete after number entry. Main app loaded.');
+      } catch (err) {
+        console.error('Google sign-in error:', err);
+        alert('Google sign-in failed. Make sure Google provider is enabled in Firebase Auth.');
+      }
+    }
+
+    function completeOnboarding() {
+      const onboarding = document.getElementById('onboarding');
+      if (onboarding) onboarding.style.display = 'none';
+
+      const mainContent = document.getElementById('main-content');
+      if (mainContent) mainContent.style.display = 'flex';
+
+      const nav = document.getElementById('bottom-nav');
+      if (nav) nav.style.display = 'grid';
+
+      if (typeof enterDemoMode === 'function') {
+        enterDemoMode();
+      } else if (typeof switchBottomTab === 'function') {
+        switchBottomTab('chat');
+      }
+    }
+
+    // Start with step 1 on load
+    setTimeout(() => {
+      const onboarding = document.getElementById('onboarding');
+      const authOverlay = document.getElementById('auth-overlay');
+      if (authOverlay) authOverlay.style.display = 'none';
+      if (onboarding) {
+        onboarding.style.display = 'flex';
+        goToStep(1);
+      }
+      const main = document.getElementById('main-content');
+      const nav = document.getElementById('bottom-nav');
+      if (main) main.style.display = 'none';
+      if (nav) nav.style.display = 'none';
+    }, 300);
+  </script>
+</body>
+</html>
+
+
+
+

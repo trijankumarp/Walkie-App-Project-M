@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Electron
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env / secrets
+.env
+.env.local
+.env.*
+
+# Firebase config (real keys) - use the .example files
+# Only ignore the local development copy. 
+# firebase-config.deploy.js MUST be committed so GitHub Actions + Firebase Hosting get the production config.
+firebase-config.js
+firebase-config.local.js
+# firebase-config.deploy.js   <-- intentionally NOT ignored (needed for auto-deploy)
+
+# Misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
