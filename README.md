@@ -9,18 +9,19 @@ WhatsApp-like messaging app with **real-time cloud sync** (Firebase), beautiful 
 **Now fully cloud-native** — works in any browser + optional native desktop wrapper.
 
 ## Live (after deploy)
-- Web (Firebase Hosting - final): https://walkie-app-project-m.web.app
+- Web (Vercel - recommended): https://walkie-app-project-m.vercel.app  (or your custom domain)
+- Alternative: Firebase Hosting → https://walkie-app-project-m.web.app
 - Desktop: Build the installer or run locally (Electron)
 
-**Firebase Project**: Walkie-App-Project-M (walkie-app-project-m)
+**Firebase Project (Database)**: Walkie-App-Project-M (walkie-app-project-m)
 
 ---
 
 ## Tech Stack (Cloud Version)
 
 - **Frontend**: Pure static (index.html + renderer.js) — Tailwind via CDN, no heavy bundler needed
-- **Primary Hosting**: **Firebase Hosting** (final)
-- **Backend / Data**: **Firebase**
+- **Hosting (Frontend)**: **Vercel** (recommended) — fast previews + global CDN
+- **Backend / Data**: **Firebase** (Firestore + Auth)
   - Authentication (Google + Email/Password)
   - Firestore (chats, messages, communities, users) with real-time listeners
   - Offline persistence enabled
@@ -56,27 +57,34 @@ npm run web:node
 npm start
 ```
 
-## Full Cloud Setup (GitHub + Firebase + Vercel)
+## Full Cloud Setup (GitHub + Firebase Database + Vercel Hosting)
 
-### 1. Create / Use Firebase Project
+### 1. Firebase (Database + Auth only)
 
-Use the existing project (details from your console screenshot):
+Firebase is used **only for the backend** (Firestore real-time data + Authentication). Hosting is handled by Vercel.
 
 - **Project name**: Walkie-App-Project-M
 - **Project ID**: walkie-app-project-m
 - **Project number**: 82781619963
 
 1. Go to https://console.firebase.google.com/project/walkie-app-project-m
-2. In **Project Settings → General → Your apps**, click the web `</>` icon (or "Add app" → Web).
-3. Give it the nickname "Walkie-App-Project-M" and register the app.
-4. Copy the full `firebaseConfig` object from step 2.
-5. Paste the real values into:
-   - `firebase-config.js` (local development — copy from `.example.js` first)
-   - `firebase-config.deploy.js` (for Firebase Hosting production)
-6. Enable **Phone** authentication (Authentication → Sign-in method) so the WhatsApp-style OTP flow works with real SMS (or add test phone numbers for dev).
-7. (Optional but recommended) Add authorized domains under Authentication settings (localhost + your hosting domain).
+2. Create a **Firestore database** (if you haven't already) in the console.
+3. In **Project Settings → General → Your apps**, click the web `</>` icon (or "Add app" → Web).
+4. Give it the nickname "Walkie-App-Project-M" and register the app.
+5. Copy the full `firebaseConfig` object.
+6. Paste the real values into:
+   - `firebase-config.js` (local development)
+   - `firebase-config.deploy.js` (used in production on Vercel)
+7. **Authentication → Sign-in method**:
+   - Enable **Google** (required for the current flow).
+   - (Optional) Enable **Phone** if you want real OTP/SMS login later.
+8. Add authorized domains (important!):
+   - `localhost`
+   - `127.0.0.1`
+   - `*.vercel.app`
+   - `walkie-app-project-m.web.app` (if you also use Firebase Hosting)
 
-You already have `firebase.json` configured for Hosting, so once the config is filled you can deploy with `firebase deploy`.
+`firebase-config.deploy.js` is committed so it works on Vercel (and Firebase Hosting if you ever use it).
 
 ### 2. Local Config
 
@@ -87,26 +95,54 @@ cp firebase-config.example.js firebase-config.js
 
 ### 3. GitHub
 
-```powershell
-# In the project folder
-git init
-git add .
-git commit -m "Initial cloud version with Firebase + responsive UI"
+This repo is the source of truth:
 
-# Create a new repo on GitHub (https://github.com/new)
-# Then:
+```powershell
 git remote add origin https://github.com/trijankumarp/Walkie-App-Project-M.git
 git branch -M main
 git push -u origin main
 ```
 
-### 4. GitHub + Firebase Auto Deploy (Step 1 - Add this now)
+### 4. Vercel Hosting (Recommended)
 
-**Every push to `main` will automatically deploy to Firebase Hosting.**
+Vercel is the primary hosting for the frontend.
+
+**Easiest way:**
+
+1. Go to https://vercel.com
+2. Click **Add New Project** → **Import Git Repository**
+3. Select your `Walkie-App-Project-M` repo from GitHub
+4. Vercel will auto-detect it as a static site.
+5. Click **Deploy**
+
+Your site will be live at something like:
+`https://walkie-app-project-m.vercel.app`
+
+**Alternative (Vercel CLI):**
+
+```powershell
+npm i -g vercel
+vercel
+```
+
+Vercel will automatically redeploy on every push to `main` (after you connect the repo once).
+
+**Why this combo works well:**
+- Vercel → fast static hosting + preview URLs on every PR
+- Firebase → real-time database (Firestore) + auth
+- GitHub → code + (optional) CI
+
+The app already detects `vercel.app` domains and loads `firebase-config.deploy.js` for the correct production Firebase config.
+
+### (Optional) GitHub + Firebase Hosting Auto Deploy
+
+If you ever want to use **Firebase Hosting** as an alternative or backup:
+
+**Every push to `main` will automatically deploy to Vercel** (if you connected the repo).
 
 We added:
 - `.github/workflows/deploy-check.yml` — basic validation on every push/PR
-- `.github/workflows/deploy-hosting.yml` — real auto-deploy using the official Firebase action
+- `.github/workflows/deploy-hosting.yml` — optional auto-deploy to **Firebase Hosting** (backup)
 
 #### One-time setup for auto-deploy:
 
@@ -127,26 +163,19 @@ We added:
    ```
 5. Go to the **Actions** tab on GitHub — you should see the "Deploy to Firebase Hosting" workflow running.
 
-After successful deploy the live site is always at:
-**https://walkie-app-project-m.web.app**
+After successful deploy (Vercel) the live site is at your Vercel URL (e.g. `https://walkie-app-project-m.vercel.app`).
 
-Manual deploy (if you ever need it):
+Manual deploy to Firebase Hosting (optional):
 ```powershell
-firebase deploy
-# or just hosting
 firebase deploy --only hosting
 ```
 
-### Daily: One-command "Push to GitHub + Auto Deploy to Firebase"
+### Daily: One-command "Push to GitHub + Auto Deploy to Vercel"
 
-After making changes, use any of these:
+After making changes, use:
 
 ```powershell
-# Recommended (uses the smart push script)
 npm run push "your nice commit message here"
-
-# Even shorter - push to GitHub (auto deploys) + immediate direct deploy
-npm run ship "message"
 ```
 
 Or directly:
@@ -156,12 +185,12 @@ Or directly:
 ```
 
 What happens:
-1. `push.ps1` (or `npm run push`) does `git add + commit + push`
-2. GitHub sees the push to `main`
-3. `deploy-hosting.yml` runs automatically → deploys to Firebase Hosting (live channel)
-4. Your changes are live at https://walkie-app-project-m.web.app within ~1 minute
+1. Script does `git add + commit + push`
+2. GitHub receives the push
+3. If you connected the repo to Vercel → Vercel automatically deploys the new version
+4. (Optional) If you have the Firebase Hosting workflow enabled, it can also deploy to Firebase Hosting
 
-**Note:** We made a small but important fix so `firebase-config.deploy.js` is now properly tracked in git (it was being ignored). This ensures the correct production Firebase config is always deployed via the GitHub action.
+`firebase-config.deploy.js` is committed so production builds (Vercel or Firebase Hosting) always get the correct Firebase config.
 
 ### Zero-Command Auto Push (Recommended for active development)
 
@@ -193,7 +222,7 @@ That's it.
 
 To stop: just press `Ctrl + C` in the watcher window.
 
-**Tip:** Keep the watcher running in a small terminal while you develop. All your saves → auto deployed.
+**Tip:** Keep the watcher running in a small terminal while you develop. All your saves → auto deployed to Vercel.
 
 **Note on commit history:** This will create many small "auto: ..." commits. This is normal and fine during heavy development. Later you can squash them on main if you want a clean history.
 
@@ -226,7 +255,8 @@ The phone number + OTP flow now uses real Firebase (compat SDK + your exact conf
    - Make sure these are present:
      - `localhost`
      - `127.0.0.1`
-     - `walkie-app-project-m.web.app`
+     - `*.vercel.app`
+     - `walkie-app-project-m.web.app` (Firebase Hosting fallback)
      - `walkie-app-project-m.firebaseapp.com`
 
 4. In the app flow:
@@ -257,19 +287,19 @@ Walkie-App-Project-M/
 │   ├── deploy-check.yml          # Validation on push/PR
 │   └── deploy-hosting.yml        # Auto-deploy to Firebase on push to main
 ├── electron/                     # Desktop wrapper (optional)
-├── firebase.json                 # Firebase Hosting configuration
+├── firebase.json                 # Firebase Hosting (optional / backup)
+├── vercel.json                   # Vercel configuration (recommended hosting)
 ├── manifest.json                 # PWA manifest
 ├── sw.js                         # Service Worker (offline + caching)
 ├── index.html                    # Main app (PWA enabled)
 ├── renderer.js                   # All UI + Firebase logic
-├── vercel.json                   # (optional/backup)
 ├── firebase-config.example.js
-├── firebase-config.deploy.js
+├── firebase-config.deploy.js     # Used by Vercel + Firebase Hosting production
 ├── package.json
 └── README.md
 ```
 
-**Current Firebase target**: Walkie-App-Project-M (walkie-app-project-m)
+**Current Firebase target (Database)**: Walkie-App-Project-M (walkie-app-project-m)
 
 ## Key Features (Current)
 
