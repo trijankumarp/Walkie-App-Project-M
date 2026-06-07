@@ -1,4 +1,4 @@
-﻿# Auto push script for Social App Project-M
+﻿# Auto push script for Walkie-App-Project-M
 # Run this after edits:
 #   1. Commits + pushes to GitHub
 #   2. GitHub Action automatically deploys to Firebase Hosting
@@ -40,7 +40,7 @@ Write-Host ""
 Write-Host "✅ Pushed successfully!" -ForegroundColor Green
 Write-Host "🔄 GitHub Actions will now deploy to Firebase Hosting." -ForegroundColor Green
 Write-Host ""
-Write-Host "Check status: https://github.com/trijankumarp/Social-App-Project-M/actions" -ForegroundColor Yellow
-Write-Host "Live site:    https://social-app-projectm.web.app  (hard refresh / Ctrl+Shift+R after ~1 min)" -ForegroundColor Yellow
+Write-Host "Check status: https://github.com/trijankumarp/Walkie-App-Project-M/actions" -ForegroundColor Yellow
+Write-Host "Live site:    https://walkie-app-project-m.web.app  (hard refresh / Ctrl+Shift+R after ~1 min)" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Tip: You can also run 'npm run deploy' for an immediate direct deploy (bypasses GitHub)." -ForegroundColor DarkGray

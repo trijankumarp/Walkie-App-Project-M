@@ -1,18 +1,18 @@
-# Social App Project-M
+# Walkie-App-Project-M
 
 WhatsApp-like messaging app with **real-time cloud sync** (Firebase), beautiful mobile-first UI that also works great on desktop, voice/video calls, communities, themes, and full offline support.
 
-**Project**: Social App Project-M  
-**Firebase Project ID**: social-app-projectm  
-**Project Number**: 575974156131
+**Project**: Walkie-App-Project-M  
+**Firebase Project ID**: walkie-app-project-m  
+**Project Number**: 82781619963
 
 **Now fully cloud-native** — works in any browser + optional native desktop wrapper.
 
 ## Live (after deploy)
-- Web (Firebase Hosting - final): https://social-app-projectm.web.app
+- Web (Firebase Hosting - final): https://walkie-app-project-m.web.app
 - Desktop: Build the installer or run locally (Electron)
 
-**Firebase Project**: Social App Project-M (social-app-projectm)
+**Firebase Project**: Walkie-App-Project-M (walkie-app-project-m)
 
 ---
 
@@ -30,7 +30,7 @@ WhatsApp-like messaging app with **real-time cloud sync** (Firebase), beautiful 
 ## Quick Start (Local Web + PWA)
 
 ```powershell
-cd "C:\Users\trija\Desktop\Work\VS\Social App Project-M"
+cd "C:\Users\trija\Desktop\Work\VS\Walkie-App-Project-M"
 
 # 1. Copy config
 cp firebase-config.example.js firebase-config.js
@@ -62,13 +62,13 @@ npm start
 
 Use the existing project (details from your console screenshot):
 
-- **Project name**: Social App Project-M
-- **Project ID**: social-app-projectm
-- **Project number**: 575974156131
+- **Project name**: Walkie-App-Project-M
+- **Project ID**: walkie-app-project-m
+- **Project number**: 82781619963
 
-1. Go to https://console.firebase.google.com/project/social-app-projectm
-2. In **Project Settings → General → Your apps**, click the web `</>` icon (or "Add app" → Web) — this is exactly the screen you just showed.
-3. Give it the nickname "Social App Project-M" (already filled in the image) and register the app.
+1. Go to https://console.firebase.google.com/project/walkie-app-project-m
+2. In **Project Settings → General → Your apps**, click the web `</>` icon (or "Add app" → Web).
+3. Give it the nickname "Walkie-App-Project-M" and register the app.
 4. Copy the full `firebaseConfig` object from step 2.
 5. Paste the real values into:
    - `firebase-config.js` (local development — copy from `.example.js` first)
@@ -95,7 +95,7 @@ git commit -m "Initial cloud version with Firebase + responsive UI"
 
 # Create a new repo on GitHub (https://github.com/new)
 # Then:
-git remote add origin https://github.com/YOUR_USERNAME/Social-App-Project-M.git
+git remote add origin https://github.com/trijankumarp/Walkie-App-Project-M.git
 git branch -M main
 git push -u origin main
 ```
@@ -111,7 +111,7 @@ We added:
 #### One-time setup for auto-deploy:
 
 1. Make sure your code is on GitHub (main branch) and the workflows are committed.
-2. In Firebase Console (project **social-app-projectm**):
+2. In Firebase Console (project **walkie-app-project-m**):
    - Go to **Project settings** → **Service accounts**
    - Under "Firebase Admin SDK" click **Generate new private key**
    - Download the JSON file (keep it safe, contains secrets)
@@ -128,7 +128,7 @@ We added:
 5. Go to the **Actions** tab on GitHub — you should see the "Deploy to Firebase Hosting" workflow running.
 
 After successful deploy the live site is always at:
-**https://social-app-projectm.web.app**
+**https://walkie-app-project-m.web.app**
 
 Manual deploy (if you ever need it):
 ```powershell
@@ -159,7 +159,7 @@ What happens:
 1. `push.ps1` (or `npm run push`) does `git add + commit + push`
 2. GitHub sees the push to `main`
 3. `deploy-hosting.yml` runs automatically → deploys to Firebase Hosting (live channel)
-4. Your changes are live at https://social-app-projectm.web.app within ~1 minute
+4. Your changes are live at https://walkie-app-project-m.web.app within ~1 minute
 
 **Note:** We made a small but important fix so `firebase-config.deploy.js` is now properly tracked in git (it was being ignored). This ensures the correct production Firebase config is always deployed via the GitHub action.
 
@@ -226,8 +226,8 @@ The phone number + OTP flow now uses real Firebase (compat SDK + your exact conf
    - Make sure these are present:
      - `localhost`
      - `127.0.0.1`
-     - `social-app-projectm.web.app`
-     - `social-app-projectm.firebaseapp.com`
+     - `walkie-app-project-m.web.app`
+     - `walkie-app-project-m.firebaseapp.com`
 
 4. In the app flow:
    - Step 2: Select country (India default +91). The prefix box and the small code should update immediately.
@@ -252,7 +252,7 @@ After successful real (or test) verification you will see the main app UI with C
 ## Project Structure
 
 ```
-Social App Project-M/
+Walkie-App-Project-M/
 ├── .github/workflows/
 │   ├── deploy-check.yml          # Validation on push/PR
 │   └── deploy-hosting.yml        # Auto-deploy to Firebase on push to main
@@ -269,7 +269,7 @@ Social App Project-M/
 └── README.md
 ```
 
-**Current Firebase target**: Social App Project-M (social-app-projectm)
+**Current Firebase target**: Walkie-App-Project-M (walkie-app-project-m)
 
 ## Key Features (Current)
 

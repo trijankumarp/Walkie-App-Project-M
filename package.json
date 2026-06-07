@@ -1,8 +1,8 @@
 {
-  "name": "social-app-project-m",
+  "name": "walkie-app-project-m",
   "version": "1.0.0",
-  "productName": "Social App Project-M",
-  "description": "Social App Project-M — WhatsApp-like messaging with Firebase (project: social-app-projectm), real-time chats, calls, communities and themes",
+  "productName": "Walkie-App-Project-M",
+  "description": "Walkie-App-Project-M — WhatsApp-like messaging with Firebase (project: walkie-app-project-m), real-time chats, calls, communities and themes",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -33,7 +33,7 @@
     "electron-builder": "^26.15.0"
   },
   "build": {
-    "appId": "com.mos.socialapp",
+    "appId": "com.mos.walkieapp",
     "productName": "Social App",
     "directories": {
       "output": "dist"

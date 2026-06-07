@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Social App Project-M">
-  <title>Social App Project-M</title>
+  <meta name="apple-mobile-web-app-title" content="Walkie-App-Project-M">
+  <title>Walkie-App-Project-M</title>
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
@@ -17,24 +17,24 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Firebase SDKs (CDN compat - matches your console "CDN" + "Config" paste exactly.
-       Using compat builds so existing renderer.js + onboarding phone auth code (signInWithPhoneNumber etc) work without changes.
-       For pure modular (npm style) a full refactor of data layer would be needed. -->
+  <!-- Firebase SDKs (CDN compat)
+       Using compat builds so the existing renderer.js + global firebase.auth()/firestore() code works without a bundler.
+       The new project (walkie-app-project-m) config is below. -->
   <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics-compat.js"></script>
   <script>
     // Your web app's Firebase configuration
-    // Exact match to the "Config" object you pasted (from Firebase Console)
+    // Updated for the new Firebase project: walkie-app-project-m
     const firebaseConfig = window.FIREBASE_CONFIG || {
-      apiKey: "AIzaSyDKk1HnKH6Z4lGAGt_AqSr3Aav6ilTNAiI",
-      authDomain: "social-app-projectm.firebaseapp.com",
-      projectId: "social-app-projectm",
-      storageBucket: "social-app-projectm.firebasestorage.app",
-      messagingSenderId: "575974156131",
-      appId: "1:575974156131:web:8743fc9aa90949b9411556",
-      measurementId: "G-D1YRVGQ9Y4"
+      apiKey: "AIzaSyBvN_qjHmkjg9_QjqDrbMKGG-0RNoy4noA",
+      authDomain: "walkie-app-project-m.firebaseapp.com",
+      projectId: "walkie-app-project-m",
+      storageBucket: "walkie-app-project-m.firebasestorage.app",
+      messagingSenderId: "82781619963",
+      appId: "1:82781619963:web:3ceba3f57708964bb5925e",
+      measurementId: "G-6F4742R8V2"
     };
 
     // Initialize Firebase (compat style so firebase.auth() / firebase.firestore() globals work)
@@ -54,7 +54,7 @@
     window.db = db;
     window.analytics = analytics;
 
-    console.log('[Firebase] Compat SDK initialized (CDN v12.14.0) using your exact config');
+    console.log('[Firebase] Compat SDK initialized (CDN v12.14.0) for walkie-app-project-m');
   </script>
 
   <!-- Early config loader (tries real firebase-config.js for local or .deploy for hosting).
@@ -67,7 +67,7 @@
       const script = document.createElement('script');
       script.src = useDeploy ? 'firebase-config.deploy.js' : 'firebase-config.js';
       script.onerror = () => {
-        console.warn('[Firebase] No firebase-config.js — using built-in example values (your pasted config). Copy firebase-config.example.js → firebase-config.js to customize.');
+        console.warn('[Firebase] No firebase-config.js — using built-in fallback. Copy firebase-config.example.js → firebase-config.js for local dev.');
         const fallback = document.createElement('script');
         fallback.src = 'firebase-config.example.js';
         document.head.appendChild(fallback);
@@ -411,7 +411,7 @@
           <!-- Hover interaction: the whole icon scales slightly on hover (applied to svg) -->
         </svg>
       </div>
-      <h1 class="text-3xl font-bold mb-6">Welcome to Social App Project-M</h1>
+      <h1 class="text-3xl font-bold mb-6">Welcome to Walkie-App-Project-M</h1>
       <p class="text-[var(--wa-light-gray)] text-sm mb-8 max-w-xs">
         Read our <span class="text-[var(--wa-white)]">Privacy Policies</span>. Tap "Agree and continue" to accept our <span class="text-[var(--wa-white)]">Terms of Service</span>.
       </p>

@@ -1,6 +1,6 @@
 {
-  "name": "Social App Project-M",
-  "short_name": "Social App",
+  "name": "Walkie-App-Project-M",
+  "short_name": "Walkie",
   "description": "WhatsApp-like messaging with real-time chats, calls, communities and themes. Mobile-first PWA powered by Firebase.",
   "start_url": "/",
   "scope": "/",

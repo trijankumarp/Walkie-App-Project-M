@@ -27,7 +27,7 @@ function Write-Color($Text, $Color = "White") {
 }
 
 Write-Color "========================================" "Cyan"
-Write-Color "  Social App - Auto Git Push + Firebase Deploy Watcher" "Cyan"
+Write-Color "  Walkie-App-Project-M - Auto Git Push + Firebase Deploy Watcher" "Cyan"
 Write-Color "========================================" "Cyan"
 Write-Host ""
 
@@ -88,7 +88,7 @@ while ($true) {
             git push
 
             Write-Color "  ✅ Pushed! GitHub Action will deploy to Firebase." "Green"
-            Write-Color "     Live: https://social-app-projectm.web.app" "DarkGray"
+            Write-Color "     Live: https://walkie-app-project-m.web.app" "DarkGray"
 
             $lastPushTime = Get-Date
             Write-Host ""
