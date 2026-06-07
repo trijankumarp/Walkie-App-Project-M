@@ -9,7 +9,7 @@ WhatsApp-like messaging app with **real-time cloud sync** (Firebase), beautiful 
 **Now fully cloud-native** — works in any browser + optional native desktop wrapper.
 
 ## Live (after deploy)
-- Web (Vercel - recommended): https://walkie-app-project-m.vercel.app  (or your custom domain)
+- Web (Vercel - recommended): https://walkie-app-project-m.vercel.app (or your custom domain)
 - Alternative: Firebase Hosting → https://walkie-app-project-m.web.app
 - Desktop: Build the installer or run locally (Electron)
 
