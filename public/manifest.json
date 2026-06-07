@@ -1,0 +1,27 @@
+{
+  "name": "Walkie-App-Project-M",
+  "short_name": "Walkie",
+  "description": "WhatsApp-like messaging with real-time chats, calls, communities and themes. Mobile-first PWA powered by Firebase.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111113",
+  "theme_color": "#00A884",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/111113/00A884?text=SA",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/111113/00A884?text=SA",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "communication", "productivity"],
+  "lang": "en"
+}
